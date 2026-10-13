@@ -190,8 +190,7 @@ Use a **negative weight** for signals that suggest a message is genuine. To make
 
 ## Team
 
-- Team name: _add here_
-- Members: _add here_
+- Members: Gouri I S and Visal Bijendra Kumar
 
 ---
 
