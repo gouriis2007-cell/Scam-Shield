@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scam Shield</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 650px; margin: 25px auto; padding: 0 15px; background: #f4f7fb; }
+    h1 { color: #1a3c6e; }
+    textarea { width: 100%; height: 140px; font-size: 20px; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 2px solid #1a3c6e; }
+    select, button { font-size: 20px; padding: 10px 16px; margin-top: 10px; border-radius: 8px; border: 2px solid #1a3c6e; }
+    button { background: #1a3c6e; color: white; cursor: pointer; }
+    .box { padding: 18px; border-radius: 10px; margin-top: 22px; font-size: 20px; }
+    .scam { background: #ffe3e3; border: 3px solid #d00; }
+    .safe { background: #e3ffe8; border: 3px solid #090; }
+    li { margin-bottom: 8px; }
+    .small { color: #555; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>🛡️ Scam Shield</h1>
+  <p class="small">Paste a suspicious SMS / WhatsApp message / call script</p>
+
+  <select id="sample" onchange="fillSample()">
+    <option value="">-- Try a sample message --</option>
+    {% for name, text in samples.items() %}
+      <option value="{{ text }}">{{ name }}</option>
+    {% endfor %}
+  </select>
+
+  <form method="POST">
+    <textarea id="msg" name="message" placeholder="Paste message here...">{{ message }}</textarea>
+    <br>
+    <select name="lang">
+      <option value="ml" {% if lang == 'ml' %}selected{% endif %}>മലയാളം</option>
+      <option value="hi" {% if lang == 'hi' %}selected{% endif %}>हिन्दी</option>
+    </select>
+    <button type="submit">Check ✔</button>
+  </form>
+
+  {% if result %}
+  <div class="box {{ 'scam' if result.scam else 'safe' }}">
+
+    <!-- Everything inside this div will be read aloud -->
+    <div id="result-text" data-lang="{{ lang }}">
+      <h2>{{ result.verdict }}</h2>
+
+      {% if result.reasons %}
+        <ul>{% for r in result.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      {% if result.note %}<p>{{ result.note }}</p>{% endif %}
+
+      {% if result.steps %}
+        <h3>👉 What to do now:</h3>
+        <ol>{% for s in result.steps %}<li>{{ s }}</li>{% endfor %}</ol>
+      {% endif %}
+    </div>
+
+    <button type="button" onclick="speakResult()">🔊 Listen</button>
+    <button type="button" onclick="stopSpeaking()">⏹ Stop</button>
+    <p id="voice-msg" class="small"></p>
+  </div>
+{% endif %}
+
+  <script>
+    function fillSample() {
+      document.getElementById("msg").value = document.getElementById("sample").value;
+    }
+    let currentAudio = null;
+
+async function speakResult() {
+  const box = document.getElementById("result-text");
+  const msg = document.getElementById("voice-msg");
+  if (!box) return;
+
+  // Remove emojis so they are not read out
+  const text = box.innerText.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "");
+
+  msg.innerText = "Loading voice...";
+  try {
+    const body = new URLSearchParams({ text: text, lang: box.dataset.lang });
+    const res = await fetch("/speak", { method: "POST", body: body });
+    if (!res.ok) throw new Error("Server error");
+
+    const blob = await res.blob();
+    stopSpeaking();
+    currentAudio = new Audio(URL.createObjectURL(blob));
+    await currentAudio.play();
+    msg.innerText = "";
+  } catch (e) {
+    msg.innerText = "Could not load voice. Check your internet connection.";
+  }
+}
+
+function stopSpeaking() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+  }
+}
+  </script>
+</body>
+</html>
